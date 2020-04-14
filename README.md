@@ -1,2 +1,2 @@
 # Extreme-learning-machine
-Basic Extreme learning machine
+Various Extreme learning machine
