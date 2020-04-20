@@ -1,0 +1,80 @@
+from sklearn.model_selection import train_test_split#将数据分为测试集和训练集
+from sklearn.preprocessing import minmax_scale
+from sklearn import metrics
+from sklearn import datasets#引入数据集,sklearn包含众多数据集
+import xlrd
+import numpy as np
+import matplotlib.pyplot as plt
+#iris=datasets.load_iris()#利用sklearn加载公共数据
+
+def read_excel():
+    workBook= xlrd.open_workbook('E:\PycharmProjects\DataClassification\iris.xlsx')
+    sheet=workBook.sheet_by_index(0)
+    rawdata=[]
+    for i in range(sheet.nrows):
+        row = sheet.row_values(i)
+        rawdata.append(row)
+    rawdata=np.array(rawdata)
+    return rawdata
+rawdata=read_excel()#从excel中读数据
+print('the shape of the rawdata is',rawdata.shape)
+
+class ELMClassification(object):
+    def __init__(self, rawdata):
+        inst = rawdata[:, 0:-1]
+        inst = minmax_scale(inst)  # 按列归一化
+        label = rawdata[:, -1]
+        self.NOoutput = 3
+        self.NOhidden = 6
+        self.NOinput = inst.shape[1]#0为行数，1为列数
+        self.trainx, self.testx, self.trainy, self.testy = train_test_split(inst, label, test_size=0.2,random_state=0)
+
+        self.trainy = list(map(int, self.trainy))
+        self.trainy = np.array(self.trainy)
+        target = np.zeros((len(self.trainy), self.NOoutput))#label转矩阵形式
+        for i in range(0, len(self.trainy)):
+            target[i, self.trainy[i]] = 1
+        self.trainy = target
+
+        self.weight = np.random.uniform(-1, 1, (self.NOinput, self.NOhidden))
+        self.bias = np.random.uniform(0, 1, (1, self.NOhidden))
+        print('the shape of trainy', self.trainy.shape)
+
+    def sigmoid(self,x):
+        return 1.0 / (1 + np.exp(-x))
+
+    def trainStep(self):
+        ex=np.ones(self.trainx.shape[0])
+        x=np.column_stack((ex,self.trainx))#需要双括号，因为np.column_stack输入为一个变量
+        self.weightB=np.row_stack((self.bias,self.weight))#需要双括号，因为np.row_stack输入为一个变量
+        H=self.sigmoid(np.dot(x,self.weightB))
+        invH=np.linalg.pinv(H)
+        print('the shape of hidden layer is', H.shape)
+        self.outputW=np.dot(invH,self.trainy)
+        print('the shape of outputWeight is', self.outputW.shape)
+
+    def testStep(self):
+        ex = np.ones(self.testx.shape[0])
+        x = np.column_stack((ex, self.testx))
+        H = self.sigmoid(np.dot(x,self.weightB))
+        self.re = np.dot(H,self.outputW)
+
+    def AccuracyClassification(self):
+        self.result = []
+        for i in self.re:
+            L = i.tolist()#将数组转列表格式
+            self.result.append(L.index(max(L)))
+
+        Accuracy = metrics.accuracy_score(y_true=self.testy, y_pred=self.result)
+        print('Classification Accuracy is', Accuracy)
+        plt.figure(1)
+        plt.plot(self.testy, '-b*')
+        plt.plot(self.result, '-ro')
+        plt.title('the predicted results of basic ELM')
+        plt.legend(['target','result'])
+        plt.show()
+
+result=ELMClassification(rawdata)
+result.trainStep()
+result.testStep()
+result.AccuracyClassification()
