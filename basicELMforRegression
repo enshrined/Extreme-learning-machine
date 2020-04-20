@@ -1,0 +1,79 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import minmax_scale
+from sklearn import metrics
+t = np.linspace(0, 5, num=51, endpoint=True)
+a = np.sin(t)
+b = np.sin(t*72*np.pi/180+90)
+c = np.sin(t*72*1.4*np.pi/180+90)
+y = np.sinc(t)
+plt.figure(1)
+plt.plot(t,a,'-ro')
+plt.plot(t,b,'-go')
+plt.plot(t,c,'-mo')
+plt.plot(t,y,'-b*')
+plt.show()
+rawdata = np.array([t,a,b,c,y])
+rawdata = rawdata.transpose()
+print(rawdata.shape)
+
+class ELMRegression(object):
+    def __init__(self, rawdata):
+        rawdata = minmax_scale(rawdata)  # 按列归一化
+        self.inst = rawdata[:, 0:-1]
+        self.label = rawdata[:, -1]
+        self.NOoutput = 1
+        self.NOhidden = 6
+        self.NOinput = self.inst.shape[1]#0为行数，1为列数
+        self.trainx = self.inst[0:45]
+        self.trainy = self.label[0:45]
+        self.testx = self.inst[self.trainx.shape[0]:self.inst.shape[0] + 1]
+        self.testy = self.label[self.trainx.shape[0]:self.inst.shape[0] + 1]
+        self.weight = np.random.uniform(-1, 1, (self.NOinput, self.NOhidden))
+        self.bias = np.random.uniform(0, 1, (1, self.NOhidden))
+        print('the shape of trainy', self.trainy.shape)
+        self.t1 = t[0:self.trainx.shape[0]]
+        self.t2 = t[self.trainx.shape[0]:len(self.label)+1]
+
+    def sigmoid(self,x):
+        return 1.0 / (1 + np.exp(-x))
+
+    def trainStep(self):
+        ex = np.ones(self.trainx.shape[0])
+        x = np.column_stack((ex, self.trainx))  # 需要双括号，因为np.column_stack输入为一个变量
+        self.weightB = np.row_stack((self.bias, self.weight))  # 需要双括号，因为np.row_stack输入为一个变量
+        H = self.sigmoid(np.dot(x, self.weightB))
+        invH = np.linalg.pinv(H)
+        print('the shape of hidden layer is', H.shape)
+        self.outputW = np.dot(invH, self.trainy)
+        print('the shape of outputWeight is', self.outputW.shape)
+        self.retrain=np.dot(H,self.outputW)
+
+    def testStep(self):
+        ex = np.ones(self.testx.shape[0])
+        x = np.column_stack((ex, self.testx))
+        H = self.sigmoid(np.dot(x,self.weightB))
+        self.retest = np.dot(H,self.outputW)
+
+    def AccuracyRegression(self):
+        RV = metrics.explained_variance_score(self.testy, self.retest)
+        R2 = metrics.r2_score(self.testy, self.retest)
+        MSE = metrics.mean_squared_error(self.testy, self.retest)
+        MAE = metrics.mean_absolute_error(self.testy, self.retest)
+        plt.figure(1)
+        plt.plot(self.t1, self.trainy, '-k*')
+        plt.plot(self.t2, self.testy, '-b*')
+        plt.plot(self.t1, self.retrain, '-mo')
+        plt.plot(self.t2, self.retest, '-ro')
+        plt.title('the predicted results of basic ELM')
+        plt.legend(['trainy', 'testy', 'predicted trainy', 'predicted testy'])
+        plt.show()
+        print('RV is', RV)
+        print('R2 is', R2)
+        print('MSE is', MSE)
+        print('MAE is', MAE)
+
+result=ELMRegression(rawdata)
+result.trainStep()
+result.testStep()
+result.AccuracyRegression()
